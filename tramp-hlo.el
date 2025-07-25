@@ -18,17 +18,17 @@
 
 (require 'tramp-sh)
 
-(defconst tramp-hlo-dir-locals--all-files-script
+(defconst tramp-hlo-test-files-in-dir-script
   "
 DIR=$1
-FILE1=$2
-FILE2=$3
+shift
+FILES=$@
 if [ ! -d \"$DIR\" ]; then
     echo nil
 else
     cd \"$DIR\"
     echo \\(
-    for FILE in \"$FILE1\" \"$FILE2\"; do
+    for FILE in $FILES; do
         if [ -r \"$FILE\" ] && [ -f \"$FILE\" ] && [ ! -d \"$FILE\" ]; then
             echo \"\\\"$DIR/$FILE\\\"\"
     fi
@@ -114,7 +114,7 @@ echo \\)
   "Script to find several dominating files on a remote host"
 )
 
-(defun tramp-hlo-dir-locals--all-files (orig-fun directory)
+(defun tramp-hlo-dir-locals--all-files (orig-fun directory &optional base-el-only)
   "Tramp version of dir-locals--all-files"
   (let ((connection (file-remote-p directory)))
     (if connection
@@ -124,11 +124,16 @@ echo \\)
                          (replace-match "-2.el" t nil file-1)))
                (vec (tramp-dissect-file-name directory))
                )
-          (tramp-maybe-send-script vec tramp-hlo-dir-locals--all-files-script "dir_locals__all_files")
+          (tramp-maybe-send-script vec tramp-hlo-test-files-in-dir-script "test_files_in_dir")
           (mapcar (lambda (name) (concat connection name))
-                  (tramp-send-command-and-read vec
-                   (format "dir_locals__all_files %s %s %s"
-                           localdir file-1 file-2)
+                  (tramp-send-command-and-read
+                   vec
+                   (if base-el-only
+                       (format "test_files_in_dir %s %s"
+                               localdir file-1)
+                       (format "test_files_in_dir %s %s %s"
+                               localdir file-1 file-2)
+                       )
                    )
                   )
           )
