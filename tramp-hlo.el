@@ -170,7 +170,7 @@ if not found.
 PRED takes one argument, a directory, and returns a non-nil value if that
 directory is the one for which we're looking."
   (tramp-maybe-send-script vec tramp-hlo-list-parents-script "list_parents")
-  (let* ((command (format "list_parents %s" (nth 6 vec)))
+  (let* ((command (format "list_parents %s" (tramp-file-name-localname vec)))
          (parents (tramp-send-command-and-read vec command))
          )
     (while (and parents (not (funcall pred (tramp-make-tramp-file-name vec (car parents)))))
@@ -189,8 +189,8 @@ directory containing any files in list NAMES.
 Stop at the first parent directory matched, and return the directory. Return nil
 if not found."
   (tramp-maybe-send-script vec tramp-hlo-locate-dominating-file-multi-script "locate_dominating_file_multi")
-  (let* ((localfile (nth 6 vec))
-         (quoted-names (mapcar (lambda (name) (format "\"%s\"" name)) names))
+  (let* ((localfile (tramp-file-name-localname vec))
+         (quoted-names (mapcar #'tramp-shell-quote-argument names))
          (quoted-names-str (string-join names " "))
          (command (format "locate_dominating_file_multi %s %s" localfile quoted-names-str))
          (local-dominating (tramp-send-command-and-read vec command)))
