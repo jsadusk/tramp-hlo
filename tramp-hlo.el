@@ -111,25 +111,26 @@ echo \\)
 )
 
 (defmacro tramp-hlo-advice (file fallback &rest body)
-  "Setup macro for tramp-hlo advice functions.
+  "Setup macro for `tramp-hlo' advice functions.
 Creates a scaffold to make an advice function to add a tramp implementation to
 a high level function. FILE is a filename that might be a remote file with a
 tramp-sh backend. If so, execute the BODY of the macro, otherwise run the
 FALLBACK expression. If executing BODY, the dissected FILE will be in scope as
 `vec'."
   `(if-let* ((non-essential t)
-	      (vec (ignore-errors
-		     (tramp-dissect-file-name ,file)))
-	      ((tramp-sh-file-name-handler-p vec)))
-
+	     (vec (ignore-errors
+		    (tramp-dissect-file-name (expand-file-name ,file))))
+	     ((tramp-sh-file-name-handler-p vec))
+             (non-essential nil)
+             )
        (progn ,@body)
-     (,@fallback)
+       (,@fallback)
      )
   )
 
 
 (defun tramp-hlo-dir-locals--all-files (orig-fun directory &optional base-el-only)
-  "Tramp optimized version of dir-locals--all-files.
+  "Tramp optimized version of `dir-locals--all-files'.
 Return a list of all readable dir-locals files in the directory
 represented by VEC.
 The returned list is sorted by increasing priority.  That is,
@@ -162,7 +163,7 @@ This is intended as an advice function, with ORIG-FUN as the fallback function."
   )
 
 (defun tramp-hlo-locate-dominating-file-pred (vec pred)
-  "Implementation of tramp-hlo-locate-dominating-file for a name predicate.
+  "Implementation of `tramp-hlo-locate-dominating-file' for a name predicate.
 Starting at the file represented by VEC, look up directory hierarchy for
 directory identified by PRED.
 Stop at the first parent directory matched, and return the directory. Return nil
@@ -183,7 +184,7 @@ directory is the one for which we're looking."
   )
 
 (defun tramp-hlo-locate-dominating-file-list (vec names)
-  "Implementation of tramp-hlo-locate-dominating-file for a list of names.
+  "Implementation of `tramp-hlo-locate-dominating-file' for a list of names.
 Starting at the file represented by VEC, look up directory hierarchy for
 directory containing any files in list NAMES.
 Stop at the first parent directory matched, and return the directory. Return nil
@@ -199,7 +200,7 @@ if not found."
   )
 
 (defun tramp-hlo-locate-dominating-file (orig-fun file name)
-  "Tramp version of locate-dominating-file
+  "Tramp version of `locate-dominating-file'
 Starting at FILE, look up directory hierarchy for directory containing NAME.
 FILE can be a file or a directory.  If it's a file, its directory will
 serve as the starting point for searching the hierarchy of directories.
@@ -308,6 +309,7 @@ built-in functions:
 - `dir-locals--all-files'
 - `locate-dominating-file'
 - `dir-locals-find-file'"
+  (interactive)
   (advice-add 'dir-locals--all-files :around #'tramp-hlo-dir-locals--all-files)
   (advice-add 'locate-dominating-file :around #'tramp-hlo-locate-dominating-file)
   (advice-add 'dir-locals-find-file :around #'tramp-hlo-dir-locals-find-file)
@@ -315,9 +317,14 @@ built-in functions:
 
 (defun remove-tramp-hlo ()
   "Remove tramp high-level functions.
-Remove tramp advice functions for high-level emacs built-in functions."
+Remove tramp advice functions for the following emacs built-in functions:
+- `dir-locals--all-files'
+- `locate-dominating-file'
+- `dir-locals-find-file'"
+  (interactive)
   (advice-remove 'dir-locals--all-files #'tramp-hlo-dir-locals--all-files)
   (advice-remove 'locate-dominating-file #'tramp-hlo-locate-dominating-file)
   (advice-remove 'dir-locals-find-file #'tramp-hlo-dir-locals-find-file)
   )
 
+(provide 'tramp-hlo)
