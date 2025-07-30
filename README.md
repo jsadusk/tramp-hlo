@@ -15,7 +15,7 @@ using `package-vc` or `elpaca` with `use-package`.
 (use-package tramp-hlo
     :vc (:url "https://github.com/jsadusk/tramp-hlo" :rev "main")
     :config
-    (configure-tramp-hlo)
+    (setup-tramp-hlo)
 )
 ```
 
@@ -24,7 +24,7 @@ using `package-vc` or `elpaca` with `use-package`.
 (use-package tramp-hlo
     :ensure (tramp-hlo :type git :host github :repo "jsadusk/tramp-hlo")
     :config
-    (configure-tramp-hlo)
+    (setup-tramp-hlo)
     )
 ```
 
@@ -61,6 +61,10 @@ this out and let me know if you see it break anything.
 
 # Current implementation
 
-This is currently built using advice functions, because I don't want
-to interfere with the internals of tramp. However these could
-definitely be adapted to be part of `tramp-sh` if the core team approves.
+This is currently built using advice functions, wrapping the core
+emacs functions it reimplements. It is not integrated direclty with
+tramp because tramp specifically targets emacs magic file handler
+functions. This package could eventually include a framework similar
+to tramp method handlers to allow other packages to build on it. This
+would allow packages to define tramp implementations for their own
+functions. 
