@@ -117,14 +117,15 @@ a high level function. FILE is a filename that might be a remote file with a
 tramp-sh backend. If so, execute the BODY of the macro, otherwise run the
 FALLBACK expression. If executing BODY, the dissected FILE will be in scope as
 `vec'."
-  `(if-let* ((non-essential t)
-	     (vec (ignore-errors
-		    (tramp-dissect-file-name (expand-file-name ,file))))
-	     ((tramp-sh-file-name-handler-p vec))
-             (non-essential nil)
-             )
-       (progn ,@body)
-       (,@fallback)
+  `(if (and-let* ((non-essential t)
+	         (vec (ignore-errors
+		        (tramp-dissect-file-name (expand-file-name ,file))))
+	         (is-sh (tramp-sh-file-name-handler-p vec))
+                 )
+         vec)
+
+       (with-parsed-tramp-file-name ,file vec ,@body)
+     (,@fallback)
      )
   )
 
