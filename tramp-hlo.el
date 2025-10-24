@@ -1,12 +1,12 @@
 ;; -*- lexical-binding: t -*-
 
-;;; tramp-hlo.el --- High level operations as tramp handlers
+;;; tramp-hlo.el --- High level operations as Tramp handlers
 ;; Author Joe Sadusk <joe@sadusk.com>
 ;; Version 0.0.1
 
 ;;; Commentary
-;; This is an attempt to optimize tramp remote editing with slow
-;; connection by building higher level core lisp functions as tramp
+;; This is an attempt to optimize Tramp remote editing with slow
+;; connection by building higher level core lisp functions as Tramp
 ;; operations. The idea is to reduce round trips by doing more on the
 ;; server in one request.
 
@@ -51,7 +51,8 @@ else
     echo \\)
 fi
 "
-  "Script to list all parents in upward order of a directory, with home abbreviations"
+  "Script to list all parents in upward order of a directory,
+with home abbreviations"
   )
 
 (defconst tramp-hlo-locate-dominating-file-script
@@ -196,7 +197,8 @@ The optional argument BASE-EL-ONLY will only consider the base dir locals file."
            (file-2 (when (string-match "\\.el\\'" file-1)
                      (replace-match "-2.el" t nil file-1)))
            )
-      (tramp-maybe-send-script vec tramp-hlo-test-files-in-dir-script "test_files_in_dir")
+      (tramp-maybe-send-script vec tramp-hlo-test-files-in-dir-script
+                               "test_files_in_dir")
       (mapcar (lambda (name) (tramp-make-tramp-file-name vec name))
               (tramp-send-command-and-read
                vec
@@ -224,7 +226,9 @@ directory is the one for which we're looking."
   (let* ((command (format "list_parents %s" (tramp-file-name-localname vec)))
          (parents (tramp-send-command-and-read vec command))
          )
-    (while (and parents (not (funcall pred (tramp-make-tramp-file-name vec (car parents)))))
+    (while (and parents
+                (not (funcall pred
+                              (tramp-make-tramp-file-name vec (car parents)))))
       (pop parents)
       )
     (if parents
@@ -239,13 +243,18 @@ Starting at the file represented by VEC, look up directory hierarchy for
 directory containing any files in list NAMES.
 Stop at the first parent directory matched, and return the directory. Return nil
 if not found."
-  (tramp-maybe-send-script vec tramp-hlo-locate-dominating-file-multi-script "locate_dominating_file_multi")
+  (tramp-maybe-send-script vec tramp-hlo-locate-dominating-file-multi-script
+                           "locate_dominating_file_multi")
   (let* ((localfile (tramp-file-name-localname vec))
          (quoted-names (mapcar #'tramp-shell-quote-argument names))
          (quoted-names-str (string-join names " "))
-         (command (format "locate_dominating_file_multi %s %s" localfile quoted-names-str))
+         (command (format
+                   "locate_dominating_file_multi %s %s"
+                   localfile quoted-names-str))
          (local-dominating (tramp-send-command-and-read vec command)))
-    (mapcar (lambda (result) (tramp-make-tramp-file-name vec result)) local-dominating)
+    (mapcar (lambda (result)
+              (tramp-make-tramp-file-name vec result))
+            local-dominating)
     )
   )
 
@@ -277,7 +286,7 @@ the function needs to examine, starting with FILE."
 (defun tramp-hlo-dir-locals-find-file-cache-update (file cache)
   "Prepare inputs and run support script for `tramp-hlo-dir-locals-find-file'
 Perform the equivalent of `expand-file-name', `locate-dominating-file' and
-`file-attribute-modification-time' in one tramp operation.
+`file-attribute-modification-time' in one Tramp operation.
 The operations performed are:
   - Expand the filename of FILE
   - Locate the dominating directory-locals files for the directory containing
@@ -298,17 +307,29 @@ This function returns a plist with the fields:
     dotted pair list of dir-locals file and mtime
 `:locals' and `:cache' are optional fields, and are missing if not found."
   (with-parsed-tramp-file-name file vec
-    (tramp-maybe-send-script vec tramp-hlo-dir-locals-find-file-cache-update-script "dir_locals_find_file_cache_update")
+    (tramp-maybe-send-script
+     vec
+     tramp-hlo-dir-locals-find-file-cache-update-script
+     "dir_locals_find_file_cache_update")
     (let* (
            (file-connection (file-remote-p file))
            (cache-dirs (mapcar #'car cache))
            (cache-remotes (mapcar 'file-remote-p cache-dirs))
-           (same-remote-cache-dirs (seq-filter (lambda (cache-dir) (string= file-connection (file-remote-p cache-dir))) cache-dirs))
-           (same-remotes (mapcar (lambda (cache-dir) (string= file-connection (file-remote-p cache-dir))) cache-dirs))
+           (same-remote-cache-dirs (seq-filter
+                                    (lambda (cache-dir)
+                                      (string= file-connection
+                                               (file-remote-p cache-dir)))
+                                    cache-dirs))
+           (same-remotes (mapcar (lambda (cache-dir)
+                                   (string= file-connection
+                                            (file-remote-p cache-dir)))
+                                 cache-dirs))
            (cache-dirs-local (mapcar #'file-local-name same-remote-cache-dirs))
            (cache-dirs-quoted (mapcar #'tramp-shell-quote-argument cache-dirs-local))
            (cache-dirs-string (string-join cache-dirs-quoted " "))
-           (command (format "dir_locals_find_file_cache_update %s \".dir-locals.el .dir-locals2.el\" %s" (tramp-file-local-name file) cache-dirs-string))
+           (command (format
+    "dir_locals_find_file_cache_update %s \".dir-locals.el .dir-locals2.el\" %s"
+                     (tramp-file-local-name file) cache-dirs-string))
            )
       (tramp-send-command-and-read vec command))))
 
@@ -335,13 +356,22 @@ This function returns either:
     entry."
   (let* (
          (file-connection (file-remote-p file))
-         (cache-update (tramp-hlo-dir-locals-find-file-cache-update file dir-locals-directory-cache))
+         (cache-update (tramp-hlo-dir-locals-find-file-cache-update
+                        file dir-locals-directory-cache))
          (file (concat file-connection (plist-get cache-update :file)))
          (locals-dir-update (plist-get cache-update :locals))
-         (locals-dir (if locals-dir-update (concat file-connection (car locals-dir-update))))
+         (locals-dir (if locals-dir-update
+                         (concat file-connection
+                                 (car locals-dir-update))))
          (cache-dir-update (plist-get cache-update :cache))
-         (cache-dir (if cache-dir-update (concat file-connection (car cache-dir-update))))
-         (dir-elt (if cache-dir-update (seq-find (lambda (elt) (string= (car elt) cache-dir)) dir-locals-directory-cache)))
+         (cache-dir (if cache-dir-update
+                        (concat file-connection
+                                (car cache-dir-update))))
+         (dir-elt (if cache-dir-update
+                      (seq-find
+                       (lambda (elt)
+                         (string= (car elt) cache-dir))
+                       dir-locals-directory-cache)))
          )
     (if (and dir-elt
              (or (null locals-dir)
@@ -379,20 +409,23 @@ This function returns either:
 
 
 (defun setup-tramp-hlo ()
-  "Setup tramp high-level functions.
-Adds tramp external operations for the following emacs built-in functions:
+  "Setup Tramp high-level functions.
+Adds Tramp external operations for the following Emacs built-in functions:
 - `dir-locals--all-files'
 - `locate-dominating-file'
 - `dir-locals-find-file'"
   (interactive)
-  (tramp-add-external-operation 'dir-locals--all-files #'tramp-hlo-dir-locals--all-files 'tramp-sh)
-  (tramp-add-external-operation 'locate-dominating-file #'tramp-hlo-locate-dominating-file 'tramp-sh)
-  (tramp-add-external-operation 'dir-locals-find-file #'tramp-hlo-dir-locals-find-file 'tramp-sh)
+  (tramp-add-external-operation 'dir-locals--all-files
+                                #'tramp-hlo-dir-locals--all-files 'tramp-sh)
+  (tramp-add-external-operation 'locate-dominating-file
+                                #'tramp-hlo-locate-dominating-file 'tramp-sh)
+  (tramp-add-external-operation 'dir-locals-find-file
+                                #'tramp-hlo-dir-locals-find-file 'tramp-sh)
   )
 
 (defun remove-tramp-hlo ()
-  "Remove tramp high-level functions.
-Remove tramp external operations for the following emacs built-in functions:
+  "Remove Tramp high-level functions.
+Remove Tramp external operations for the following emacs built-in functions:
 - `dir-locals--all-files'
 - `locate-dominating-file'
 - `dir-locals-find-file'"
