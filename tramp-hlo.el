@@ -52,7 +52,7 @@ else
 fi
 "
   "Script to list all parents in upward order of a directory,
-with home abbreviations"
+with home abbreviations."
   )
 
 (defconst tramp-hlo-locate-dominating-file-script
@@ -75,7 +75,7 @@ else
     fi
 fi
 "
-  "Script to find a dominating file directory on a remote host"
+  "Script to find a dominating file directory on a remote host."
   )
 
 (defconst tramp-hlo-locate-dominating-file-multi-script
@@ -108,7 +108,7 @@ if [ -d \"$TEST\" ]; then
 fi
 echo \\)
 "
-  "Script to find several dominating files on a remote host"
+  "Script to find several dominating files on a remote host."
 )
 
 (defconst tramp-hlo-dir-locals-find-file-cache-update-script
@@ -178,7 +178,7 @@ if [ -e \"$FILE\" ]; then
 else
     return 1
 fi"
-  "Support script for `dir-locals-find-file'"
+  "Support script for `dir-locals-find-file'."
 )
 
 
@@ -259,7 +259,7 @@ if not found."
   )
 
 (defun tramp-hlo-locate-dominating-file (file name)
-  "Tramp version of `locate-dominating-file'
+  "Tramp version of `locate-dominating-file'.
 Starting at FILE, look up directory hierarchy for directory containing NAME.
 FILE can be a file or a directory.  If it's a file, its directory will
 serve as the starting point for searching the hierarchy of directories.
@@ -284,7 +284,7 @@ the function needs to examine, starting with FILE."
   )
 
 (defun tramp-hlo-dir-locals-find-file-cache-update (file cache)
-  "Prepare inputs and run support script for `tramp-hlo-dir-locals-find-file'
+  "Prepare inputs and run support script for `tramp-hlo-dir-locals-find-file'.
 Perform the equivalent of `expand-file-name', `locate-dominating-file' and
 `file-attribute-modification-time' in one Tramp operation.
 The operations performed are:
