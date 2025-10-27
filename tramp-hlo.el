@@ -31,6 +31,7 @@
 
 ;;; Code
 
+(require 'tramp)
 (require 'tramp-sh)
 
 (defconst tramp-hlo-test-files-in-dir-script
