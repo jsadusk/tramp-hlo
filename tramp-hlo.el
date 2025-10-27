@@ -3,6 +3,7 @@
 ;;; tramp-hlo.el --- High level operations as Tramp handlers
 ;; Author Joe Sadusk <joe@sadusk.com>
 ;; Version 0.0.1
+;; Package-Requires: ((tramp "2.8.1"))
 
 ;;; Commentary
 ;; This is an attempt to optimize Tramp remote editing with slow
@@ -55,28 +56,6 @@ fi
 with home abbreviations."
   )
 
-(defconst tramp-hlo-locate-dominating-file-script
-  "
-FILE=$1
-NAME=$2
-TEST=\"$(dirname $FILE )\"
-if [ ! -d \"$TEST\" ]; then
-    echo nil
-else
-    while [ ! -z \"$TEST\" ] && [ ! -e \"$TEST/$NAME\" ]; do
-        TEST=${TEST\%/*}
-    done
-    if [ -f \"$TEST/$NAME\" ]; then
-        echo -n \"\\\"$TEST/\\\"\" | sed \"s|^\\\"$HOME|\\\"~|\"
-    elif [ -f \"/$NAME\" ]; then
-        echo -n \\\"/\\\"
-    else
-        echo nil
-    fi
-fi
-"
-  "Script to find a dominating file directory on a remote host."
-  )
 
 (defconst tramp-hlo-locate-dominating-file-multi-script
   "
@@ -247,7 +226,7 @@ if not found."
                            "locate_dominating_file_multi")
   (let* ((localfile (tramp-file-name-localname vec))
          (quoted-names (mapcar #'tramp-shell-quote-argument names))
-         (quoted-names-str (string-join names " "))
+         (quoted-names-str (string-join quoted-names " "))
          (command (format
                    "locate_dominating_file_multi %s %s"
                    localfile quoted-names-str))
@@ -314,16 +293,11 @@ This function returns a plist with the fields:
     (let* (
            (file-connection (file-remote-p file))
            (cache-dirs (mapcar #'car cache))
-           (cache-remotes (mapcar 'file-remote-p cache-dirs))
            (same-remote-cache-dirs (seq-filter
                                     (lambda (cache-dir)
                                       (string= file-connection
                                                (file-remote-p cache-dir)))
                                     cache-dirs))
-           (same-remotes (mapcar (lambda (cache-dir)
-                                   (string= file-connection
-                                            (file-remote-p cache-dir)))
-                                 cache-dirs))
            (cache-dirs-local (mapcar #'file-local-name same-remote-cache-dirs))
            (cache-dirs-quoted (mapcar #'tramp-shell-quote-argument cache-dirs-local))
            (cache-dirs-string (string-join cache-dirs-quoted " "))
@@ -358,7 +332,6 @@ This function returns either:
          (file-connection (file-remote-p file))
          (cache-update (tramp-hlo-dir-locals-find-file-cache-update
                         file dir-locals-directory-cache))
-         (file (concat file-connection (plist-get cache-update :file)))
          (locals-dir-update (plist-get cache-update :locals))
          (locals-dir (if locals-dir-update
                          (concat file-connection
