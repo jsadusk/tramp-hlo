@@ -66,7 +66,7 @@ being the result.")
 	   (file-directory-p ert-remote-temporary-file-directory)
 	   (file-writable-p ert-remote-temporary-file-directory)
 	   (tramp-sh-file-name-handler-p
-	    (tramp.diessect-file-name ert-remote-temporary-file-directory)))))))
+	    (tramp-dissect-file-name ert-remote-temporary-file-directory)))))))
 
   (cdr tramp-hlo--test-enabled-checked))
 
