@@ -399,7 +399,7 @@ This function returns either:
       locals-dir)))
 
 
-(defun setup-tramp-hlo ()
+(defun tramp-hlo-setup ()
   "Setup Tramp high-level functions.
 Adds Tramp external operations for the following Emacs built-in functions:
 - `dir-locals--all-files'
@@ -414,7 +414,7 @@ Adds Tramp external operations for the following Emacs built-in functions:
                                 #'tramp-hlo-dir-locals-find-file 'tramp-sh)
   )
 
-(defun remove-tramp-hlo ()
+(defun tramp-hlo-remove ()
   "Remove Tramp high-level functions.
 Remove Tramp external operations for the following emacs built-in functions:
 - `dir-locals--all-files'
