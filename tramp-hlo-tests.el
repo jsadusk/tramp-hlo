@@ -86,13 +86,13 @@ The result must be equal."
 	   :before (symbol-function hlo-fun) #'tramp-hlo--test-advice-function)
 	  ;; Check result w/o tramp-hlo.
 	  (ert-with-message-capture captured-messages
-	    (remove-tramp-hlo)
+	    (tramp-hlo-remove)
 	    (setq expected (apply fun args))
 	    (should-not
 	     (string-match-p "tramp-hlo been here" captured-messages)))
 	  ;; Check result with tramp-hlo.
 	  (ert-with-message-capture captured-messages
-	    (setup-tramp-hlo)
+	    (tramp-hlo-setup)
 	    (setq received (apply fun args))
 	    (should (string-match-p "tramp-hlo been here" captured-messages)))
 	  ;; Compare results.
