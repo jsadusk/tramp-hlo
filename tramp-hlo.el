@@ -5,7 +5,7 @@
 ;; Author Joe Sadusk <joe@sadusk.com>
 ;; Version 0.0.1
 ;; Package: tramp-hlo
-;; Package-Requires: ((tramp "2.8.1"))
+;; Package-Requires: ((tramp "2.8.0.5"))
 ;; URL: https://github.com/jsadusk/tramp-hlo
 
 ;; This file is not part of GNU Emacs.
@@ -59,17 +59,15 @@ fi
   "
 FILE=$1
 TEST=\"$(dirname $FILE )\"
-if [ ! -d \"$TEST\" ]; then
-    echo nil
-else
-    echo \\(
-    while [ \"$TEST\" != \"\" ]; do
+echo \\(
+while [ \"$TEST\" != \"\" ]; do
+    if [ -d \"$TEST\" ]; then
         echo \"\\\"$TEST/\\\"\" | sed \"s|^$HOME|~|\"
-        TEST=${TEST%/*}
-    done
-    echo \\\"/\\\"
-    echo \\)
-fi
+        TEST=${TEST%%/*}
+    fi
+done
+echo \\\"/\\\"
+echo \\)
 "
   "Script to list all parents in upward order of a directory,
 with home abbreviations."
@@ -83,31 +81,32 @@ shift
 NAMES=$@
 TEST=\"$(dirname $FILE )\"
 echo \\(
-if [ -d \"$TEST\" ]; then
-    FOUND=\"\"
-    while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
+FOUND=\"\"
+while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
+    if [ -d \"$TEST\" ]; then
         for NAME in $NAMES; do
             if [ -f \"$TEST/$NAME\" ]; then
                 echo \"\\\"$TEST/$NAME\\\"\"
                 FOUND=1
             fi
         done
-        if [ -z \"$FOUND\" ]; then
-            if [ \"$TEST\" = \"/\" ]; then
-                TEST=\"\"
-            else
-                TEST=\"${TEST%/*}\"
-                if [ -z \"$TEST\" ]; then
-                    TEST=\"/\"
-                fi
+    fi
+    if [ -z \"$FOUND\" ]; then
+        if [ \"$TEST\" = \"/\" ]; then
+            TEST=\"\"
+        else
+            TEST=\"${TEST%%/*}\"
+            if [ -z \"$TEST\" ]; then
+                TEST=\"/\"
             fi
         fi
-    done
-fi
+    fi
+done
 echo \\)
 "
   "Script to find several dominating files on a remote host."
 )
+;STAT_FORMAT=\"${STAT_FORMAT#?}\"
 
 (defconst tramp-hlo-dir-locals-find-file-cache-update-script
   "
@@ -117,12 +116,46 @@ NAMES=$1
 shift
 CACHEDIRS=$@
 STAT_FORMAT=\"%%Y\"
-STAT_FORMAT=\"${STAT_FORMAT#?}\"
+
+# If FILE doesn't exist yet, find the first ancestor that does
+TEST=\"$FILE\"
 if [ -e \"$FILE\" ]; then
-    FILE=\"$(realpath $FILE)\"
-    TEST=\"$(dirname $FILE )\"
+    FILE=$(realpath \"$FILE\")
+    STARTING=\"$FILE\"
+else
+    STARTING=\"\"
+    while [ -z \"$STARTING\" ] && [ ! -z \"$TEST\" ]; do
+        if [ -d \"$TEST\" ]; then
+            STARTING=\"$TEST\"
+        else
+            if [ \"$TEST\" = \"/\" ]; then
+                TEST=\"\"
+            else
+                TEST=\"${TEST%%/*}\"
+                if [ -z \"$TEST\" ]; then
+                    TEST=\"/\"
+                fi
+            fi
+        fi
+    done
+fi
+
+# If we haven't found an ancestor, that's an error
+if [ -z \"$STARTING\" ]; then
+    echo nil
+else
+    TEST=$(realpath \"$STARTING\")
+
+    # make sure we're looking directories
+    if [ ! -d \"$TEST\" ]; then
+        TEST=$(dirname \"$TEST\")
+    fi
+
+    # Start the plist with the real filename
     echo \"(\"
     echo \":file \\\"$FILE\\\" \"
+
+    # walk up the directory structure looking for the search files
     FOUND=\"\"
     while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
         for NAME in $NAMES; do
@@ -136,7 +169,7 @@ if [ -e \"$FILE\" ]; then
             if [ \"$TEST\" = \"/\" ]; then
                 TEST=\"\"
             else
-                TEST=\"${TEST%/*}\"
+                TEST=\"${TEST%%/*}\"
                 if [ -z \"$TEST\" ]; then
                     TEST=\"/\"
                 fi
@@ -144,10 +177,12 @@ if [ -e \"$FILE\" ]; then
         fi
     done
 
+    # Add found files to the plist
     if [ ! -z \"$FOUND\" ]; then
         echo \":locals  (\\\"$DOMINATING_DIR\\\" $FOUND )\"
     fi
 
+    # Test cached dirs for updated mtime
     DOMINATING_DIR_LEN=$(expr length \"$DOMINATING_DIR\")
     FOUND_CACHEDIR=\"\"
     FOUND_CACHEDIR_LEN=0
@@ -160,6 +195,7 @@ if [ -e \"$FILE\" ]; then
         fi
     done
 
+    # Add updated cachedirs to plist
     if [ ! -z \"$FOUND_CACHEDIR\" ]; then
         echo \":cache ( \\\"$FOUND_CACHEDIR\\\" \"
         for NAME in $NAMES; do
@@ -172,10 +208,8 @@ if [ -e \"$FILE\" ]; then
     fi
 
     echo \")\"
-    return 0
-else
-    return 1
-fi"
+fi
+"
   "Support script for `dir-locals-find-file'."
 )
 
