@@ -35,6 +35,15 @@
 
 ;;; Code:
 
+
+;; Add load-path for batch mode
+(if (and load-file-name noninteractive)
+    (progn
+      (add-to-list 'load-path (file-name-directory load-file-name))
+      (add-to-list 'load-path (file-name-concat (file-name-directory load-file-name) ".." "tramp"))
+      )
+  )
+(require 'tramp)
 (require 'tramp-hlo)
 (require 'ert-x)
 
@@ -114,14 +123,13 @@ The result must be equal."
 
     ;; Use absolute directory.
     (tramp-hlo--run-test 'dir-locals--all-files tmpdir)
-    (tramp-hlo--run-test 'dir-locals--all-files tmpdir 'base-el-only)
+
     ;; Use relative directory.
     (let ((default-directory tmpdir))
-      (tramp-hlo--run-test 'dir-locals--all-files "./")
-      (tramp-hlo--run-test 'dir-locals--all-files "./" 'base-el-only)))
+      (tramp-hlo--run-test 'dir-locals--all-files "./"))
 
-  ;; Try directory with special characters.  See tramp-tests.el for
-  ;; more examples.
+    ;; Try directory with special characters.  See tramp-tests.el for
+    ;; more examples.
   (dolist (prefix '(" foo\tbar baz\t" "&foo&bar&baz&" "$foo$bar$$baz$"))
     (ert-with-temp-directory tmpdir
       :prefix (expand-file-name prefix ert-remote-temporary-file-directory)
@@ -129,8 +137,7 @@ The result must be equal."
       (make-empty-file
        (expand-file-name (string-replace ".el" "-2.el" dir-locals-file) tmpdir))
 
-      (tramp-hlo--run-test 'dir-locals--all-files tmpdir)
-      (tramp-hlo--run-test 'dir-locals--all-files tmpdir 'base-el-only)))
+      (tramp-hlo--run-test 'dir-locals--all-files tmpdir)))
 
   ;; Use another `dir-locals-file'.
   (ert-with-temp-directory tmpdir
@@ -140,8 +147,7 @@ The result must be equal."
       (make-empty-file
        (expand-file-name (string-replace ".el" "-2.el" dir-locals-file) tmpdir))
 
-      (tramp-hlo--run-test 'dir-locals--all-files tmpdir)
-      (tramp-hlo--run-test 'dir-locals--all-files tmpdir 'base-el-only))))
+      (tramp-hlo--run-test 'dir-locals--all-files tmpdir)))))
 
 ;; TODO: Add more scenarii.
 (ert-deftest tramp-hlo-test-dir-locals-find-file ()

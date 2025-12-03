@@ -42,6 +42,7 @@ FILES=$@
 if [ ! -d \"$DIR\" ]; then
     echo nil
 else
+    DIR=$(realpath \"$DIR\")
     cd \"$DIR\"
     echo \\(
     for FILE in $FILES; do
@@ -85,7 +86,7 @@ FOUND=\"\"
 while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
     if [ -d \"$TEST\" ]; then
         for NAME in $NAMES; do
-            if [ -f \"$TEST/$NAME\" ]; then
+            if [ -e \"$TEST/$NAME\" ]; then
                 echo \"\\\"$TEST/$NAME\\\"\"
                 FOUND=1
             fi
@@ -106,7 +107,7 @@ echo \\)
 "
   "Script to find several dominating files on a remote host."
 )
-;STAT_FORMAT=\"${STAT_FORMAT#?}\"
+
 
 (defconst tramp-hlo-dir-locals-find-file-cache-update-script
   "
@@ -179,7 +180,7 @@ else
 
     # Add found files to the plist
     if [ ! -z \"$FOUND\" ]; then
-        echo \":locals  (\\\"$DOMINATING_DIR\\\" $FOUND )\"
+        echo \":locals  (\\\"$DOMINATING_DIR/\\\" $FOUND )\"
     fi
 
     # Test cached dirs for updated mtime
@@ -214,7 +215,7 @@ fi
 )
 
 
-(defun tramp-hlo-dir-locals--all-files (directory &optional base-el-only)
+(defun tramp-hlo-dir-locals--all-files (directory)
   "Tramp optimized version of `dir-locals--all-files'.
 Return a list of all readable dir-locals files in the directory
 represented by VEC.
@@ -223,7 +224,9 @@ values specified in the last file should take precedence over
 those in the first.
 
 The optional argument BASE-EL-ONLY will only consider the base dir locals file."
-  (with-parsed-tramp-file-name directory vec
+  (with-parsed-tramp-file-name
+      (if (file-name-absolute-p directory) directory (file-name-concat default-directory directory))
+      vec
     (let* ((localdir (directory-file-name (tramp-file-name-localname vec)))
            (file-1 dir-locals-file)
            (file-2 (when (string-match "\\.el\\'" file-1)
@@ -234,12 +237,8 @@ The optional argument BASE-EL-ONLY will only consider the base dir locals file."
       (mapcar (lambda (name) (tramp-make-tramp-file-name vec name))
               (tramp-send-command-and-read
                vec
-               (if base-el-only
-                   (format "test_files_in_dir %s %s"
-                           localdir file-1)
-                 (format "test_files_in_dir %s %s %s"
-                         localdir file-1 file-2)
-                 )
+               (format "test_files_in_dir %s %s %s"
+                       (tramp-shell-quote-argument localdir) file-1 file-2)
                )
               )
       )
@@ -301,7 +300,9 @@ Instead of a string, NAME can also be a predicate taking one argument
 \(a directory) and returning a non-nil value if that directory is the one for
 which we're looking.  The predicate will be called with every file/directory
 the function needs to examine, starting with FILE."
-  (with-parsed-tramp-file-name file vec
+  (with-parsed-tramp-file-name
+      (if (file-name-absolute-p file) file (file-name-concat default-directory file))
+      vec
    (if (functionp name)
        (tramp-hlo-locate-dominating-file-pred vec name)
      (let* ((names (if (listp name) name (list name)))
@@ -338,7 +339,9 @@ This function returns a plist with the fields:
   - `:cache' containing the most appropriate cache directory under FILE with a
     dotted pair list of dir-locals file and mtime
 `:locals' and `:cache' are optional fields, and are missing if not found."
-  (with-parsed-tramp-file-name file vec
+  (with-parsed-tramp-file-name
+      (if (file-name-absolute-p file) file (file-name-concat default-directory file))
+      vec
     (tramp-maybe-send-script
      vec
      tramp-hlo-dir-locals-find-file-cache-update-script
