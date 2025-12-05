@@ -35,14 +35,12 @@
 
 ;;; Code:
 
-
 ;; Add load-path for batch mode
-(if (and load-file-name noninteractive)
-    (progn
+(when load-file-name noninteractive
       (add-to-list 'load-path (file-name-directory load-file-name))
-      (add-to-list 'load-path (file-name-concat (file-name-directory load-file-name) ".." "tramp"))
-      )
-  )
+      (add-to-list
+       'load-path
+       (file-name-concat (file-name-directory load-file-name) ".." "tramp")))
 (require 'tramp)
 (require 'tramp-hlo)
 (require 'ert-x)
@@ -116,7 +114,7 @@ The result must be equal."
   (skip-unless (tramp-hlo--test-enabled))
 
   (ert-with-temp-directory tmpdir
-    :prefix ert-remote-temporary-file-directory
+    :prefix (file-name-as-directory ert-remote-temporary-file-directory)
     (make-empty-file (expand-file-name dir-locals-file tmpdir))
     (make-empty-file
      (expand-file-name (string-replace ".el" "-2.el" dir-locals-file) tmpdir))
@@ -126,11 +124,12 @@ The result must be equal."
 
     ;; Use relative directory.
     (let ((default-directory tmpdir))
-      (tramp-hlo--run-test 'dir-locals--all-files "./"))
+      (tramp-hlo--run-test 'dir-locals--all-files "./")))
 
-    ;; Try directory with special characters.  See tramp-tests.el for
-    ;; more examples.
-  (dolist (prefix '(" foo\tbar baz\t" "&foo&bar&baz&" "$foo$bar$$baz$"))
+  ;; Try directory with special characters.  See tramp-tests.el for
+  ;; more examples.
+  (dolist (prefix '(" foo\tbar baz\t" "&foo&bar&baz&"
+		    "$foo$bar$$baz$" "'foo\"bar'baz\""))
     (ert-with-temp-directory tmpdir
       :prefix (expand-file-name prefix ert-remote-temporary-file-directory)
       (make-empty-file (expand-file-name dir-locals-file tmpdir))
@@ -141,20 +140,20 @@ The result must be equal."
 
   ;; Use another `dir-locals-file'.
   (ert-with-temp-directory tmpdir
-    :prefix ert-remote-temporary-file-directory
+    :prefix (file-name-as-directory ert-remote-temporary-file-directory)
     (let ((dir-locals-file "foo.el"))
       (make-empty-file (expand-file-name dir-locals-file tmpdir))
       (make-empty-file
        (expand-file-name (string-replace ".el" "-2.el" dir-locals-file) tmpdir))
 
-      (tramp-hlo--run-test 'dir-locals--all-files tmpdir)))))
+      (tramp-hlo--run-test 'dir-locals--all-files tmpdir))))
 
 (ert-deftest tramp-hlo-test-dir-locals-find-file ()
   "Test `dir-locals-find-file'."
   (skip-unless (tramp-hlo--test-enabled))
 
   (ert-with-temp-directory tmpdir
-    :prefix ert-remote-temporary-file-directory
+    :prefix (file-name-as-directory ert-remote-temporary-file-directory)
     (make-directory (file-name-concat tmpdir "foo" "bar") 'parents)
     (make-empty-file (expand-file-name dir-locals-file tmpdir))
     (make-empty-file
@@ -166,23 +165,24 @@ The result must be equal."
 
     ;; Subdirectory that doesn't exist yet
     (tramp-hlo--run-test
-     'dir-locals-find-file (file-name-concat tmpdir "foo" "bar" "baz" "blah" "bloo"))
+     'dir-locals-find-file
+     (file-name-concat tmpdir "foo" "bar" "baz" "blah" "bloo"))
 
     ;; Use relative directory
     (let ((default-directory (file-name-concat tmpdir "foo" "bar" "baz")))
-      (tramp-hlo--run-test 'dir-locals-find-file "./")
-      )
+      (tramp-hlo--run-test 'dir-locals-find-file "./"))
 
     ;; With space in directory name
     (make-directory (file-name-concat tmpdir "foo" "bar bar") 'parents)
-    
+
     ;; Use absolute directory.
     (tramp-hlo--run-test
      'dir-locals-find-file (file-name-concat tmpdir "foo" "bar bar" "baz"))
 
     ;; Subdirectory that doesn't exist yet
     (tramp-hlo--run-test
-     'dir-locals-find-file (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bloo"))
+     'dir-locals-find-file
+     (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bloo"))
 
     ;; Use relative directory
     (let ((default-directory (file-name-concat tmpdir "foo" "bar bar" "baz")))
@@ -194,7 +194,7 @@ The result must be equal."
   (skip-unless (tramp-hlo--test-enabled))
 
   (ert-with-temp-directory tmpdir
-    :prefix ert-remote-temporary-file-directory
+    :prefix (file-name-as-directory ert-remote-temporary-file-directory)
     (make-directory (file-name-concat tmpdir "foo" "bar") 'parents)
     (make-empty-file (expand-file-name dir-locals-file tmpdir))
 
@@ -207,16 +207,18 @@ The result must be equal."
 
     ;; Use subdirectory that doesn't exist yet
     (tramp-hlo--run-test
-     'locate-dominating-file (file-name-concat tmpdir "foo" "bar" "baz" "blah" "bleh") dir-locals-file)
+     'locate-dominating-file
+     (file-name-concat tmpdir "foo" "bar" "baz" "blah" "bleh") dir-locals-file)
     (tramp-hlo--run-test
-     'locate-dominating-file (file-name-concat tmpdir "foo" "bar" "baz" "blah" "bleh") "foo")
+     'locate-dominating-file
+     (file-name-concat tmpdir "foo" "bar" "baz" "blah" "bleh") "foo")
     ;; Use relative directory.
     (let ((default-directory (file-name-concat tmpdir "foo" "bar" "baz")))
       (tramp-hlo--run-test 'locate-dominating-file "./" dir-locals-file)
       (tramp-hlo--run-test 'locate-dominating-file "./" "foo")
       (tramp-hlo--run-test 'locate-dominating-file "./blah/bleh" "foo")
-      (tramp-hlo--run-test 'locate-dominating-file "./blah/bleh" dir-locals-file)
-      )
+      (tramp-hlo--run-test
+       'locate-dominating-file "./blah/bleh" dir-locals-file))
 
     ;; Directory name with space
     (make-directory (file-name-concat tmpdir "foo" "bar bar") 'parents)
@@ -225,21 +227,24 @@ The result must be equal."
      'locate-dominating-file
      (file-name-concat tmpdir "foo" "bar bar" "baz") dir-locals-file)
     (tramp-hlo--run-test
-     'locate-dominating-file (file-name-concat tmpdir "foo" "bar bar" "baz") "foo")
+     'locate-dominating-file
+     (file-name-concat tmpdir "foo" "bar bar" "baz") "foo")
 
     ;; Use subdirectory that doesn't exist yet
     (tramp-hlo--run-test
-     'locate-dominating-file (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bleh") dir-locals-file)
+     'locate-dominating-file
+     (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bleh")
+     dir-locals-file)
     (tramp-hlo--run-test
-     'locate-dominating-file (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bleh") "foo")
+     'locate-dominating-file
+     (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bleh") "foo")
     ;; Use relative directory.
     (let ((default-directory (file-name-concat tmpdir "foo" "bar bar" "baz")))
       (tramp-hlo--run-test 'locate-dominating-file "./" dir-locals-file)
       (tramp-hlo--run-test 'locate-dominating-file "./" "foo")
       (tramp-hlo--run-test 'locate-dominating-file "./blah/bleh" "foo")
-      (tramp-hlo--run-test 'locate-dominating-file "./blah/bleh" dir-locals-file)
-      )))
-
+      (tramp-hlo--run-test
+       'locate-dominating-file "./blah/bleh" dir-locals-file))))
 
 (provide 'tramp-hlo-tests)
 
