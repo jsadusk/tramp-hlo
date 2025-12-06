@@ -1,38 +1,48 @@
 # tramp-hlo
-High level operations as tramp handlers
+Higher level emacs functions as optimized tramp operations
 
-This is an experiment to speed up some tramp operations that are slow in common
-usage. The idea is to reduce round-trips by implementing higher level
-operations than tramp usually targets as server side scripts. 
+Normally a tramp handler only contains implementations of the emacs
+primitive file operations. Implementing this set of operations allows
+emacs to do anything on a remote host, but many of the common
+functions in the emacs standard library will trigger multiple file
+operations for a single call. This can cause performance issues,
+because each file operation involves a roundtrip to the remote host.
+
+This module implements some of those operations as single round trip
+tramp operations. The bulk of the operation is implemented as a server
+side bash script, rather than an elisp function. In practice this
+makes a lot of day to day editing on remote hosts much more responsive.
 
 # Installation
 
-This isn't in ELPA/MELPA yet, so the easiest way to install would be
-using `package-vc` or `elpaca` with `use-package`. 
+Install from GNU ELPA:
 
-## `package-vc`
+## package.el
+
+```
+M-x package-install <RET> tramp-hlo
+M-x tramp-hlo-setup
+```
+
+## use-package
 ```
 (use-package tramp-hlo
-    :vc (:url "https://github.com/jsadusk/tramp-hlo" :rev "main")
+    :ensure t
     :config
-    (setup-tramp-hlo)
+    (tramp-hlo-setup)
 )
 ```
 
-## `elpaca`
-```
-(use-package tramp-hlo
-    :ensure (tramp-hlo :type git :host github :repo "jsadusk/tramp-hlo")
-    :config
-    (setup-tramp-hlo)
-    )
-```
+# Configuration
+
+* Enable: `M-x tramp-hlo-setup` or add `(tramp-hlo-setup)` to
+`init.el`.
+* Disable: `M-x tramp-hlo-remove` or add `(tramp-hlo-remove)` to `init.el`
 
 # Targeted operations
 
-So far these operations have been implemented because they were
-affecting me. The approach was very successful, so I'll be searching
-for more operations to optimize in similar ways.
+A first set of operations were targetted that perform poorly over
+tramp due to roundtrips, andhave a large impact on day to day use,
 
 ## `locate-dominating-file`
 
@@ -48,23 +58,12 @@ which repeatedly look for repository root files.
 
 The function `dir-locals-find-file` not only makes use of
 `locate-dominating-file`, but uses it with a predicate that performs
-tramp operations of its own. Tweaking the logic to use more server
-side scripts also reduces 10s of round-trips to just two.
+tramp operations of its own. Encapsulating the logic to use one large
+server side script also reduces 10s of round-trips to just two.
 
 # Testing
 
-These are functions used by everything in emacs, and I've only tested
-them in my own environment. I can't catch every edge case on my
-own. I'm trying to match the logic of the original functions as
-closely as possible, but there are bound to be differences. Please try
-this out and let me know if you see it break anything.
+A suite of tests is included using ERT, in addition to using it in my
+day to day workflow. If you are using it in an environment I haven't
+tested and find an issue, feel free to report issues on github.
 
-# Current implementation
-
-This is currently built using advice functions, wrapping the core
-emacs functions it reimplements. It is not integrated direclty with
-tramp because tramp specifically targets emacs magic file handler
-functions. This package could eventually include a framework similar
-to tramp method handlers to allow other packages to build on it. This
-would allow packages to define tramp implementations for their own
-functions. 
