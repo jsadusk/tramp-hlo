@@ -103,11 +103,17 @@ The result must be equal."
 	    (setq received (apply fun args))
 	    (should (string-match-p "tramp-hlo been here" captured-messages)))
 	  ;; Compare results.
+	  ;(message "%s %s\n%s\n%s\n" fun args expected received)
 	  (should (equal expected received)))
 
       ;; Cleanup.
       (remove-function
        (symbol-function hlo-fun) #'tramp-hlo--test-advice-function))))
+
+;; See tramp-tests.el for more examples.
+(defconst tramp-hlo--special-names
+  '(" foo\tbar baz\t" "&foo&bar&baz&" "$foo$bar$$baz$" "'foo\"bar'baz\"")
+  "File names with special characters.")
 
 (ert-deftest tramp-hlo-test-dir-locals--all-files ()
   "Test `dir-locals--all-files'."
@@ -126,10 +132,8 @@ The result must be equal."
     (let ((default-directory tmpdir))
       (tramp-hlo--run-test 'dir-locals--all-files "./")))
 
-  ;; Try directory with special characters.  See tramp-tests.el for
-  ;; more examples.
-  (dolist (prefix '(" foo\tbar baz\t" "&foo&bar&baz&"
-		    "$foo$bar$$baz$" "'foo\"bar'baz\""))
+  ;; Try directories with special characters.
+  (dolist (prefix tramp-hlo--special-names)
     (ert-with-temp-directory tmpdir
       :prefix (expand-file-name prefix ert-remote-temporary-file-directory)
       (make-empty-file (expand-file-name dir-locals-file tmpdir))
@@ -172,22 +176,23 @@ The result must be equal."
     (let ((default-directory (file-name-concat tmpdir "foo" "bar" "baz")))
       (tramp-hlo--run-test 'dir-locals-find-file "./"))
 
-    ;; With space in directory name
-    (make-directory (file-name-concat tmpdir "foo" "bar bar") 'parents)
+    ;; Try directories with special characters.
+    (dolist (bar tramp-hlo--special-names)
+      (make-directory (file-name-concat tmpdir "foo" bar) 'parents)
 
-    ;; Use absolute directory.
-    (tramp-hlo--run-test
-     'dir-locals-find-file (file-name-concat tmpdir "foo" "bar bar" "baz"))
+      ;; Use absolute directory.
+      (tramp-hlo--run-test
+       'dir-locals-find-file (file-name-concat tmpdir "foo" bar "baz"))
 
-    ;; Subdirectory that doesn't exist yet
-    (tramp-hlo--run-test
-     'dir-locals-find-file
-     (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bloo"))
+      ;; Subdirectory that doesn't exist yet
+      (tramp-hlo--run-test
+       'dir-locals-find-file
+       (file-name-concat tmpdir "foo" bar "baz" "blah" "bloo"))
 
-    ;; Use relative directory
-    (let ((default-directory (file-name-concat tmpdir "foo" "bar bar" "baz")))
-      (tramp-hlo--run-test 'dir-locals-find-file "./")
-      (tramp-hlo--run-test 'dir-locals-find-file "./blah/bleh"))))
+      ;; Use relative directory
+      (let ((default-directory (file-name-concat tmpdir "foo" bar "baz")))
+	(tramp-hlo--run-test 'dir-locals-find-file "./")
+	(tramp-hlo--run-test 'dir-locals-find-file "./blah/bleh")))))
 
 (ert-deftest tramp-hlo-test-locate-dominating-file ()
   "Test `locate-dominating-file'."
@@ -220,31 +225,31 @@ The result must be equal."
       (tramp-hlo--run-test
        'locate-dominating-file "./blah/bleh" dir-locals-file))
 
-    ;; Directory name with space
-    (make-directory (file-name-concat tmpdir "foo" "bar bar") 'parents)
-    ;; Use absolute directory.  Search for regular file and directory.
-    (tramp-hlo--run-test
-     'locate-dominating-file
-     (file-name-concat tmpdir "foo" "bar bar" "baz") dir-locals-file)
-    (tramp-hlo--run-test
-     'locate-dominating-file
-     (file-name-concat tmpdir "foo" "bar bar" "baz") "foo")
-
-    ;; Use subdirectory that doesn't exist yet
-    (tramp-hlo--run-test
-     'locate-dominating-file
-     (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bleh")
-     dir-locals-file)
-    (tramp-hlo--run-test
-     'locate-dominating-file
-     (file-name-concat tmpdir "foo" "bar bar" "baz" "blah" "bleh") "foo")
-    ;; Use relative directory.
-    (let ((default-directory (file-name-concat tmpdir "foo" "bar bar" "baz")))
-      (tramp-hlo--run-test 'locate-dominating-file "./" dir-locals-file)
-      (tramp-hlo--run-test 'locate-dominating-file "./" "foo")
-      (tramp-hlo--run-test 'locate-dominating-file "./blah/bleh" "foo")
+    ;; Try directories with special characters.
+    (dolist (bar tramp-hlo--special-names)
+      (make-directory (file-name-concat tmpdir "foo" bar) 'parents)
+      ;; Use absolute directory.  Search for regular file and directory.
       (tramp-hlo--run-test
-       'locate-dominating-file "./blah/bleh" dir-locals-file))))
+       'locate-dominating-file
+       (file-name-concat tmpdir "foo" bar "baz") dir-locals-file)
+      (tramp-hlo--run-test
+       'locate-dominating-file (file-name-concat tmpdir "foo" bar "baz") "foo")
+
+      ;; Use subdirectory that doesn't exist yet
+      (tramp-hlo--run-test
+       'locate-dominating-file
+       (file-name-concat tmpdir "foo" bar "baz" "blah" "bleh")
+       dir-locals-file)
+      (tramp-hlo--run-test
+       'locate-dominating-file
+       (file-name-concat tmpdir "foo" bar "blah" "bleh") "foo")
+      ;; Use relative directory.
+      (let ((default-directory (file-name-concat tmpdir "foo" bar "baz")))
+	(tramp-hlo--run-test 'locate-dominating-file "./" dir-locals-file)
+	(tramp-hlo--run-test 'locate-dominating-file "./" "foo")
+	(tramp-hlo--run-test 'locate-dominating-file "./blah/bleh" "foo")
+	(tramp-hlo--run-test
+	 'locate-dominating-file "./blah/bleh" dir-locals-file)))))
 
 (provide 'tramp-hlo-tests)
 

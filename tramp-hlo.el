@@ -83,14 +83,14 @@ characters need to be doubled.")
 FILE=$1
 shift
 NAMES=$@
-TEST=\"$(dirname $FILE )\"
+TEST=\"$(dirname \"$FILE\" )\"
 echo \\(
 FOUND=\"\"
 while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
     if [ -d \"$TEST\" ]; then
         for NAME in $NAMES; do
             if [ -e \"$TEST/$NAME\" ]; then
-                echo \"\\\"$TEST/$NAME\\\"\"
+                %k \"$TEST/$NAME\"
                 FOUND=1
             fi
         done
@@ -158,7 +158,7 @@ else
 
     # Start the plist with the real filename
     echo \"(\"
-    echo \":file \\\"$FILE\\\" \"
+    printf \":file \"; %k \"$FILE\"; printf \"\\n\"
 
     # Walk up the directory structure looking for the search files
     FOUND=\"\"
@@ -184,7 +184,7 @@ else
 
     # Add found files to the plist
     if [ ! -z \"$FOUND\" ]; then
-        echo \":locals  (\\\"$DOMINATING_DIR/\\\" $FOUND )\"
+        printf \":locals (\"; %k \"$DOMINATING_DIR/\"; echo \" $FOUND)\"
     fi
 
     # Test cached dirs for updated mtime
@@ -271,7 +271,7 @@ Stop at the first parent directory matched, and return the directory. Return nil
 if not found."
   (tramp-maybe-send-script vec tramp-hlo-locate-dominating-file-multi-script
                            "locate_dominating_file_multi")
-  (let* ((localfile (tramp-file-name-localname vec))
+  (let* ((localfile (tramp-shell-quote-argument (tramp-file-name-localname vec)))
          (quoted-names (mapcar #'tramp-shell-quote-argument names))
          (quoted-names-str (string-join quoted-names " "))
          (command (format
@@ -349,8 +349,8 @@ This function returns a plist with the fields:
            (cache-dirs-string (string-join cache-dirs-quoted " "))
            (command (format
     "dir_locals_find_file_cache_update %s \".dir-locals.el .dir-locals2.el\" %s"
-    (tramp-shell-quote-argument (tramp-file-local-name file))
-    cache-dirs-string)))
+           (tramp-shell-quote-argument (tramp-file-local-name file))
+	   cache-dirs-string)))
       (tramp-send-command-and-read vec command))))
 
 (defun tramp-hlo-dir-locals-find-file (file)
@@ -374,8 +374,7 @@ This function returns either:
     least one `dir-locals-file' in the case of no valid cache
     entry."
   (let* ((file (if (file-name-absolute-p file)
-                   file
-                 (file-name-concat default-directory file)))
+                   file (file-name-concat default-directory file)))
          (file-connection (file-remote-p file))
          (cache-update (tramp-hlo-dir-locals-find-file-cache-update
                         file dir-locals-directory-cache))
