@@ -336,15 +336,12 @@ This function returns a plist with the fields:
      tramp-hlo-dir-locals-find-file-cache-update-script
      "dir_locals_find_file_cache_update")
     (let* ((file-connection (file-remote-p file))
-           (cache-dirs (mapcar #'car cache))
-           (same-remote-cache-dirs (seq-filter
-                                    (lambda (cache-dir)
-                                      (string= file-connection
-                                               (file-remote-p cache-dir)))
-                                    cache-dirs))
-           (cache-dirs-local (mapcar #'file-local-name same-remote-cache-dirs))
            (cache-dirs-quoted
-	    (mapcar #'tramp-shell-quote-argument cache-dirs-local))
+            (cl-loop
+             for cache-entry in cache
+             when (string= file-connection (file-remote-p (car cache-entry)))
+             collect (tramp-shell-quote-argument
+                      (file-local-name (car cache-entry)))))
            (cache-dirs-string (string-join cache-dirs-quoted " "))
            (command (format
 		     "dir_locals_find_file_cache_update %s \".dir-locals.el .dir-locals2.el\" %s"
