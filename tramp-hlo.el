@@ -2,9 +2,8 @@
 
 ;; Copyright (C) 2025 Free Software Foundation, Inc.
 
-;; Author Joe Sadusk <joe@sadusk.com>
-;; Version 0.0.1
-;; Package: tramp-hlo
+;; Author: Joe Sadusk <joe@sadusk.com>
+;; Version: 0.0.1
 ;; Package-Requires: ((tramp "2.8.0.5"))
 ;; URL: https://github.com/jsadusk/tramp-hlo
 
@@ -31,9 +30,9 @@
 ;; server in one request.  It applies only to shell-based remote
 ;; connections, as declared in tramp-sh.el and tramp-container.el.
 
-;; In order to enable it, call `M-x tramp-hlo-setup'.
+;; In order to enable it, call \\[tramp-hlo-setup].
 
-;;; Code
+;;; Code:
 
 (require 'tramp)
 (require 'tramp-sh)
@@ -235,8 +234,8 @@ The optional argument BASE-EL-ONLY will only consider the base dir locals file."
       vec
     (let* ((localdir (directory-file-name (tramp-file-name-localname vec)))
            (file-1 dir-locals-file)
-           (file-2 (when (string-match "\\.el\\'" file-1)
-                     (replace-match "-2.el" t nil file-1))))
+           (file-2 (and (string-match "\\.el\\'" file-1)
+			(replace-match "-2.el" t nil file-1))))
       (tramp-maybe-send-script vec tramp-hlo-test-files-in-dir-script
                                "test_files_in_dir")
       (mapcar (lambda (name) (tramp-make-tramp-file-name vec name))
@@ -249,7 +248,7 @@ The optional argument BASE-EL-ONLY will only consider the base dir locals file."
   "Implementation of `tramp-hlo-locate-dominating-file' for a name predicate.
 Starting at the file represented by VEC, look up directory hierarchy for
 directory identified by PRED.
-Stop at the first parent directory matched, and return the directory. Return nil
+Stop at the first parent directory matched, and return the directory.  Return nil
 if not found.
 PRED takes one argument, a directory, and returns a non-nil value if that
 directory is the one for which we're looking."
@@ -267,7 +266,7 @@ directory is the one for which we're looking."
   "Implementation of `tramp-hlo-locate-dominating-file' for a list of names.
 Starting at the file represented by VEC, look up directory hierarchy for
 directory containing any files in list NAMES.
-Stop at the first parent directory matched, and return the directory. Return nil
+Stop at the first parent directory matched, and return the directory.  Return nil
 if not found."
   (tramp-maybe-send-script vec tramp-hlo-locate-dominating-file-multi-script
                            "locate_dominating_file_multi")
@@ -300,7 +299,7 @@ the function needs to examine, starting with FILE."
       vec
    (if (functionp name)
        (tramp-hlo-locate-dominating-file-pred vec name)
-     (let* ((names (if (listp name) name (list name)))
+     (let* ((names (ensure-list name))
             (file-list (tramp-hlo-locate-dominating-file-list vec names)))
        (when file-list
          (file-name-directory (car file-list)))))))
@@ -348,7 +347,7 @@ This function returns a plist with the fields:
 	    (mapcar #'tramp-shell-quote-argument cache-dirs-local))
            (cache-dirs-string (string-join cache-dirs-quoted " "))
            (command (format
-    "dir_locals_find_file_cache_update %s \".dir-locals.el .dir-locals2.el\" %s"
+		     "dir_locals_find_file_cache_update %s \".dir-locals.el .dir-locals2.el\" %s"
            (tramp-shell-quote-argument (tramp-file-local-name file))
 	   cache-dirs-string)))
       (tramp-send-command-and-read vec command))))
@@ -451,3 +450,4 @@ Remove Tramp external operations for the following Emacs built-in functions:
   (tramp-remove-external-operation 'dir-locals-find-file 'tramp-sh))
 
 (provide 'tramp-hlo)
+;;; tramp-hlo.el ends here
