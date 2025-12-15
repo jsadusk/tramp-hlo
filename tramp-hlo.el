@@ -38,16 +38,15 @@
 (require 'tramp-sh)
 
 (defconst tramp-hlo-test-files-in-dir-script "\
-DIR=$1
+DIR=\"$1\"
 shift
-FILES=$@
 if [ ! -d \"$DIR\" ]; then
     echo nil
 else
-    DIR=$(realpath \"$DIR\")
+    DIR=\"$(realpath \"$DIR\")\"
     cd \"$DIR\"
     echo \\(
-    for FILE in $FILES; do
+    for FILE in \"$@\"; do
         if [ -r \"$FILE\" ] && [ -f \"$FILE\" ] && [ ! -d \"$FILE\" ]; then
             %k \"$DIR/$FILE\"; printf \"\\n\"
         fi
@@ -61,13 +60,13 @@ Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
 (defconst tramp-hlo-list-parents-script "\
-FILE=$1
-TEST=\"$(dirname $FILE )\"
+FILE=\"$1\"
+TEST=\"$(dirname \"$FILE\")\"
 echo \\(
 while [ \"$TEST\" != \"\" ]; do
     if [ -d \"$TEST\" ]; then
         echo \"\\\"$TEST/\\\"\" | sed \"s|^$HOME|~|\"
-        TEST=${TEST%%/*}
+        TEST=\"${TEST%%/*}\"
     fi
 done
 echo \\\"/\\\"
@@ -79,15 +78,14 @@ Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
 (defconst tramp-hlo-locate-dominating-file-multi-script "\
-FILE=$1
+FILE=\"$1\"
 shift
-NAMES=$@
-TEST=\"$(dirname \"$FILE\" )\"
+TEST=\"$(dirname \"$FILE\")\"
 echo \\(
 FOUND=\"\"
 while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
     if [ -d \"$TEST\" ]; then
-        for NAME in $NAMES; do
+        for NAME in \"$@\"; do
             if [ -e \"$TEST/$NAME\" ]; then
                 %k \"$TEST/$NAME\"
                 FOUND=1
@@ -114,17 +112,16 @@ Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
 (defconst tramp-hlo-dir-locals-find-file-cache-update-script "\
-FILE=$1
+FILE=\"$1\"
 shift
-NAMES=$1
+NAMES=\"$1\"
 shift
-CACHEDIRS=$@
 STAT_FORMAT=\"%%Y\"
 
 # If FILE doesn't exist yet, find the first ancestor that does
 TEST=\"$FILE\"
 if [ -e \"$FILE\" ]; then
-    FILE=$(realpath \"$FILE\")
+    FILE=\"$(realpath \"$FILE\")\"
     STARTING=\"$FILE\"
 else
     STARTING=\"\"
@@ -148,11 +145,11 @@ fi
 if [ -z \"$STARTING\" ]; then
     echo nil
 else
-    TEST=$(realpath \"$STARTING\")
+    TEST=\"$(realpath \"$STARTING\")\"
 
     # Make sure we're looking directories
     if [ ! -d \"$TEST\" ]; then
-        TEST=$(dirname \"$TEST\")
+        TEST=\"$(dirname \"$TEST\")\"
     fi
 
     # Start the plist with the real filename
@@ -190,13 +187,13 @@ else
     DOMINATING_DIR_LEN=$(expr length \"$DOMINATING_DIR\")
     FOUND_CACHEDIR=\"\"
     FOUND_CACHEDIR_LEN=0
-    for CACHEDIR in $CACHEDIRS; do
+    for CACHEDIR in \"$@\"; do
         CACHEDIR_LEN=$(expr length \"$CACHEDIR\")
 
         if [ -d \"$CACHEDIR\" ] \\
           && [ \"$CACHEDIR_LEN\" -gt \"$FOUND_CACHEDIR_LEN\" ] \\
           && [ \"${FILE#$CACHEDIR}\" != \"$FILE\" ]; then
-            FOUND_CACHEDIR=$CACHEDIR
+            FOUND_CACHEDIR=\"$CACHEDIR\"
             FOUND_CACHEDIR_LEN=$CACHEDIR_LEN
         fi
     done
@@ -242,7 +239,9 @@ The optional argument BASE-EL-ONLY will only consider the base dir locals file."
               (tramp-send-command-and-read
                vec
                (format "test_files_in_dir %s %s %s"
-                       (tramp-shell-quote-argument localdir) file-1 file-2))))))
+                       (tramp-shell-quote-argument localdir)
+		       (tramp-shell-quote-argument file-1)
+		       (tramp-shell-quote-argument file-2)))))))
 
 (defun tramp-hlo-locate-dominating-file-pred (vec pred)
   "Implementation of `tramp-hlo-locate-dominating-file' for a name predicate.
@@ -253,7 +252,8 @@ if not found.
 PRED takes one argument, a directory, and returns a non-nil value if that
 directory is the one for which we're looking."
   (tramp-maybe-send-script vec tramp-hlo-list-parents-script "list_parents")
-  (let* ((command (format "list_parents %s" (tramp-file-name-localname vec)))
+  (let* ((localfile (tramp-shell-quote-argument (tramp-file-name-localname vec)))
+         (command (format "list_parents %s" localfile))
          (parents (tramp-send-command-and-read vec command)))
     (while (and parents
                 (not (funcall pred
@@ -343,10 +343,14 @@ This function returns a plist with the fields:
              collect (tramp-shell-quote-argument
                       (file-local-name (car cache-entry)))))
            (cache-dirs-string (string-join cache-dirs-quoted " "))
-           (command (format
-		     "dir_locals_find_file_cache_update %s \".dir-locals.el .dir-locals2.el\" %s"
-           (tramp-shell-quote-argument (tramp-file-local-name file))
-	   cache-dirs-string)))
+           (command
+            (format
+	     "dir_locals_find_file_cache_update %s \"%s %s\" %s"
+	     (tramp-shell-quote-argument (tramp-file-local-name file))
+	     (tramp-shell-quote-argument dir-locals-file)
+	     (tramp-shell-quote-argument
+	      (string-replace ".el" "-2.el" dir-locals-file))
+	     cache-dirs-string)))
       (tramp-send-command-and-read vec command))))
 
 (defun tramp-hlo-dir-locals-find-file (file)
