@@ -3,7 +3,7 @@
 ;; Copyright (C) 2025 Free Software Foundation, Inc.
 
 ;; Author: Joe Sadusk <joe@sadusk.com>
-;; Version: 0.0.1
+;; Version: 0.0.2
 ;; Package-Requires: ((tramp "2.8.0.5"))
 ;; URL: https://github.com/jsadusk/tramp-hlo
 
