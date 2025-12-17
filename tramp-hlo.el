@@ -337,11 +337,12 @@ This function returns a plist with the fields:
      "dir_locals_find_file_cache_update")
     (let* ((file-connection (file-remote-p file))
            (cache-dirs-quoted
-            (cl-loop
-             for cache-entry in cache
-             when (string= file-connection (file-remote-p (car cache-entry)))
-             collect (tramp-shell-quote-argument
-                      (file-local-name (car cache-entry)))))
+            (seq-uniq
+             (cl-loop
+              for cache-entry in cache
+              when (string= file-connection (file-remote-p (car cache-entry)))
+              collect (tramp-shell-quote-argument
+                       (file-local-name (car cache-entry))))))
            (cache-dirs-string (string-join cache-dirs-quoted " "))
            (command
             (format
@@ -416,12 +417,13 @@ This function returns either:
 				  (setq latest f-time)))))))))
             ;; This cache entry is OK.
             dir-elt
+          (progn
           ;; This cache entry is invalid; clear it.
-          (setq dir-locals-directory-cache
-                (delq dir-elt dir-locals-directory-cache))
-          ;; Return the first existing dir-locals file.  Might be the same
-          ;; as dir-elt's, might not (eg latter might have been deleted).
-          locals-dir)
+            (setq dir-locals-directory-cache
+                  (delq dir-elt dir-locals-directory-cache))
+            ;; Return the first existing dir-locals file.  Might be the same
+            ;; as dir-elt's, might not (eg latter might have been deleted).
+            locals-dir))
       ;; No cache entry.
       locals-dir)))
 
