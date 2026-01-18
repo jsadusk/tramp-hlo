@@ -61,6 +61,7 @@ characters need to be doubled.")
 
 (defconst tramp-hlo-list-parents-script "\
 TEST=\"${1%%/}\"
+[ -z \"$TEST\" ] && echo \"()\" && return
 if [ ! -d $(%r -f \"$TEST\") ]; then
     TEST=\"$(dirname \"$TEST\")\"
 fi
@@ -79,25 +80,26 @@ Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
 (defconst tramp-hlo-locate-dominating-file-multi-script "\
-    TEST=\"${1%%/}\"
-    if [ ! -d $(%r -f \"$TEST\") ]; then
-	TEST=\"$(dirname \"$TEST\")\"
+TEST=\"${1%%/}\"
+[ -z \"$TEST\" ] && echo \"()\" && return
+if [ ! -d $(%r -f \"$TEST\") ]; then
+    TEST=\"$(dirname \"$TEST\")\"
+fi
+shift
+echo \\(
+FOUND=\"\"
+while
+    if [ -d \"$TEST\" ]; then
+        for NAME in \"$@\"; do
+    	if [ -e \"$TEST/$NAME\" ]; then
+                %k \"$TEST/$NAME\"
+                FOUND=1
+    	fi
+        done
     fi
-    shift
-    echo \\(
-    FOUND=\"\"
-    while
-	if [ -d \"$TEST\" ]; then
-            for NAME in \"$@\"; do
-		if [ -e \"$TEST/$NAME\" ]; then
-                    %k \"$TEST/$NAME\"
-                    FOUND=1
-		fi
-            done
-	fi
-        [ -z \"$FOUND\" ] && [ \"$TEST\" != \"/\" ]
-    do TEST=$(dirname \"$TEST\"); done
-    echo \\)
+    [ -z \"$FOUND\" ] && [ \"$TEST\" != \"/\" ]
+do TEST=$(dirname \"$TEST\"); done
+echo \\)
 "
   "Script to find several dominating files on a remote host.
 Arguments are like in `locate-dominating-file', but with supporting
