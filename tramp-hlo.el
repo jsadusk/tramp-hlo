@@ -37,6 +37,18 @@
 (require 'tramp)
 (require 'tramp-sh)
 
+(defconst tramp-hlo--local-dirname
+  (file-name-directory (or load-file-name buffer-file-name))
+  "Directory of this source file, for loading scripts.")
+
+(defun tramp-hlo--fn-template-from-file (relative-filename)
+  "Return content shell script in ./LOCAL-FILE-NAME relative to this source."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name relative-filename tramp-hlo--local-dirname))
+    (shell-script-mode)
+    (comment-kill (count-lines (point-min) (point-max)))
+    (substring-no-properties (buffer-string))))
+
 (defconst tramp-hlo-test-files-in-dir-script "\
 DIR=\"$1\"
 shift
