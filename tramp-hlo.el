@@ -62,14 +62,12 @@ characters need to be doubled.")
 (defconst tramp-hlo-list-parents-script "\
 TEST=\"${1%%/}\"
 [ -z \"$TEST\" ] && echo \"()\" && return
-if [ ! -d $(%r -f \"$TEST\") ]; then
+if [ ! -d \"$(%r -f \"$TEST\")\" ]; then
     TEST=\"$(dirname \"$TEST\")\"
 fi
 echo \\(
 while
-    if [ -d \"$TEST\" ]; then
-        %k \"$TEST\" | sed \"s|^$HOME|~|\"
-    fi
+    %k \"$TEST\" | sed \"s|^$HOME|~|\"
     [ \"$TEST\" != \"/\" ]
 do TEST=$(dirname \"$TEST\"); done
 echo \\)
@@ -82,7 +80,7 @@ characters need to be doubled.")
 (defconst tramp-hlo-locate-dominating-file-multi-script "\
 TEST=\"${1%%/}\"
 [ -z \"$TEST\" ] && echo \"()\" && return
-if [ ! -d $(%r -f \"$TEST\") ]; then
+if [ ! -d \"$(%r -f \"$TEST\")\" ]; then
     TEST=\"$(dirname \"$TEST\")\"
 fi
 shift
