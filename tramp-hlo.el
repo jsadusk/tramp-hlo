@@ -37,182 +37,49 @@
 (require 'tramp)
 (require 'tramp-sh)
 
-(defconst tramp-hlo-test-files-in-dir-script "\
-DIR=\"$1\"
-shift
-if [ ! -d \"$DIR\" ]; then
-    echo nil
-else
-    DIR=\"$(realpath \"$DIR\")\"
-    cd \"$DIR\"
-    echo \\(
-    for FILE in \"$@\"; do
-        if [ -r \"$FILE\" ] && [ -f \"$FILE\" ] && [ ! -d \"$FILE\" ]; then
-            %k \"$DIR/$FILE\"; printf \"\\n\"
-        fi
-    done
-    echo \\)
-fi
+(defconst tramp-hlo--local-dirname
+  (file-name-directory (or load-file-name buffer-file-name))
+  "Directory of this source file, for loading scripts.")
+
+(defun tramp-hlo--fn-template-from-file (relative-filename)
+  "Return shell function template from ./LOCAL-FILE-NAME relative to this source.
+
+Removes comments and strips whitespace from line begin/end
+to reduce size.
 "
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name relative-filename
+                                            tramp-hlo--local-dirname))
+    (replace-regexp-in-string ;; empty lines after other removal
+     "\n+\n" "\n"
+     (replace-regexp-in-string ;; comments and leading/trailing whitespace
+      "\\(^[\s]+\\|#.*$\\|[\s]+$\\)" ""
+      (buffer-string)))))
+
+(defconst tramp-hlo-test-files-in-dir-scripttramp-hlo-test-files-in-dir-script
+  (tramp-hlo--fn-template-from-file "test-files-in-dir.sh")
   "Script to check for `dir-locals' in a remote directory.
 The arguments are `DIRECTORY FILE1 FILE2 ...', with optional FILE*.
 Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
-(defconst tramp-hlo-list-parents-script "\
-FILE=\"$1\"
-TEST=\"$(dirname \"$FILE\")\"
-echo \\(
-while [ \"$TEST\" != \"\" ]; do
-    if [ -d \"$TEST\" ]; then
-        echo \"\\\"$TEST/\\\"\" | sed \"s|^$HOME|~|\"
-        TEST=\"${TEST%%/*}\"
-    fi
-done
-echo \\\"/\\\"
-echo \\)
-"
+(defconst tramp-hlo-list-parents-script
+  (tramp-hlo--fn-template-from-file "list-parents.sh")
   "Script to list all parents in upward order of a DIRECTORY.
 If possible, the parents use home abbreviations.
 Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
-(defconst tramp-hlo-locate-dominating-file-multi-script "\
-FILE=\"$1\"
-shift
-TEST=\"$(dirname \"$FILE\")\"
-echo \\(
-FOUND=\"\"
-while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
-    if [ -d \"$TEST\" ]; then
-        for NAME in \"$@\"; do
-            if [ -e \"$TEST/$NAME\" ]; then
-                %k \"$TEST/$NAME\"
-                FOUND=1
-            fi
-        done
-    fi
-    if [ -z \"$FOUND\" ]; then
-        if [ \"$TEST\" = \"/\" ]; then
-            TEST=\"\"
-        else
-            TEST=\"${TEST%%/*}\"
-            if [ -z \"$TEST\" ]; then
-                TEST=\"/\"
-            fi
-        fi
-    fi
-done
-echo \\)
-"
+(defconst tramp-hlo-locate-dominating-file-multi-script
+  (tramp-hlo--fn-template-from-file "locate-dominating-file-multi.sh")
   "Script to find several dominating files on a remote host.
 Arguments are like in `locate-dominating-file', but with supporting
 several NAMEs.
 Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
-(defconst tramp-hlo-dir-locals-find-file-cache-update-script "\
-FILE=\"$1\"
-shift
-NAMES=\"$1\"
-shift
-STAT_FORMAT=\"%%Y\"
-
-# If FILE doesn't exist yet, find the first ancestor that does
-TEST=\"$FILE\"
-if [ -e \"$FILE\" ]; then
-    FILE=\"$(realpath \"$FILE\")\"
-    STARTING=\"$FILE\"
-else
-    STARTING=\"\"
-    while [ -z \"$STARTING\" ] && [ ! -z \"$TEST\" ]; do
-        if [ -d \"$TEST\" ]; then
-            STARTING=\"$TEST\"
-        else
-            if [ \"$TEST\" = \"/\" ]; then
-                TEST=\"\"
-            else
-                TEST=\"${TEST%%/*}\"
-                if [ -z \"$TEST\" ]; then
-                    TEST=\"/\"
-                fi
-            fi
-        fi
-    done
-fi
-
-# If we haven't found an ancestor, that's an error
-if [ -z \"$STARTING\" ]; then
-    echo nil
-else
-    TEST=\"$(realpath \"$STARTING\")\"
-
-    # Make sure we're looking directories
-    if [ ! -d \"$TEST\" ]; then
-        TEST=\"$(dirname \"$TEST\")\"
-    fi
-
-    # Start the plist with the real filename
-    echo \"(\"
-    printf \":file \"; %k \"$FILE\"; printf \"\\n\"
-
-    # Walk up the directory structure looking for the search files
-    FOUND=\"\"
-    while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
-        for NAME in $NAMES; do
-            if [ -f \"$TEST/$NAME\" ]; then
-                DOMINATING_DIR=\"$TEST\"
-                MTIME=\"$(stat -c \"$STAT_FORMAT\" \"$TEST/$NAME\")\"
-                FOUND=\"$FOUND ( \\\"$NAME\\\" . $MTIME ) \"
-            fi
-        done
-        if [ -z \"$FOUND\" ]; then
-            if [ \"$TEST\" = \"/\" ]; then
-                TEST=\"\"
-            else
-                TEST=\"${TEST%%/*}\"
-                if [ -z \"$TEST\" ]; then
-                    TEST=\"/\"
-                fi
-            fi
-        fi
-    done
-
-    # Add found files to the plist
-    if [ ! -z \"$FOUND\" ]; then
-        printf \":locals (\"; %k \"$DOMINATING_DIR/\"; echo \" $FOUND)\"
-    fi
-
-    # Test cached dirs for updated mtime
-    DOMINATING_DIR_LEN=$(expr length \"$DOMINATING_DIR\")
-    FOUND_CACHEDIR=\"\"
-    FOUND_CACHEDIR_LEN=0
-    for CACHEDIR in \"$@\"; do
-        CACHEDIR_LEN=$(expr length \"$CACHEDIR\")
-
-        if [ -d \"$CACHEDIR\" ] \\
-          && [ \"$CACHEDIR_LEN\" -gt \"$FOUND_CACHEDIR_LEN\" ] \\
-          && [ \"${FILE#$CACHEDIR}\" != \"$FILE\" ]; then
-            FOUND_CACHEDIR=\"$CACHEDIR\"
-            FOUND_CACHEDIR_LEN=$CACHEDIR_LEN
-        fi
-    done
-
-    # Add updated cachedirs to plist
-    if [ ! -z \"$FOUND_CACHEDIR\" ]; then
-        echo \":cache ( \\\"$FOUND_CACHEDIR\\\" \"
-        for NAME in $NAMES; do
-            if [ -f \"$FOUND_CACHEDIR/$NAME\" ]; then
-                MTIME=\"$(stat -c \"$STAT_FORMAT\" \"$FOUND_CACHEDIR/$NAME\")\"
-                echo \"( \\\"$NAME\\\" . $MTIME ) \"
-            fi
-        done
-        echo \")\"
-    fi
-
-    echo \")\"
-fi
-"
+(defconst tramp-hlo-dir-locals-find-file-cache-update-script
+  (tramp-hlo--fn-template-from-file "dir-locals-find-file-cache-update.sh")
   "Support script for `dir-locals-find-file'.
 Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
