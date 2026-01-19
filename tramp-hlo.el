@@ -60,16 +60,16 @@ Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
 (defconst tramp-hlo-list-parents-script "\
-FILE=\"$1\"
-TEST=\"$(dirname \"$FILE\")\"
+TEST=\"${1%%/}\"
+[ -z \"$TEST\" ] && echo \"()\" && return
+if [ ! -d \"$(%r -f \"$TEST\")\" ]; then
+    TEST=\"$(dirname \"$TEST\")\"
+fi
 echo \\(
-while [ \"$TEST\" != \"\" ]; do
-    if [ -d \"$TEST\" ]; then
-        echo \"\\\"$TEST/\\\"\" | sed \"s|^$HOME|~|\"
-        TEST=\"${TEST%%/*}\"
-    fi
-done
-echo \\\"/\\\"
+while
+    %k \"$TEST\" | sed \"s|^$HOME|~|\"
+    [ \"$TEST\" != \"/\" ]
+do TEST=$(dirname \"$TEST\"); done
 echo \\)
 "
   "Script to list all parents in upward order of a DIRECTORY.
@@ -78,31 +78,25 @@ Format specifiers are replaced by `tramp-expand-script', percent
 characters need to be doubled.")
 
 (defconst tramp-hlo-locate-dominating-file-multi-script "\
-FILE=\"$1\"
+TEST=\"${1%%/}\"
+[ -z \"$TEST\" ] && echo \"()\" && return
+if [ ! -d \"$(%r -f \"$TEST\")\" ]; then
+    TEST=\"$(dirname \"$TEST\")\"
+fi
 shift
-TEST=\"$(dirname \"$FILE\")\"
 echo \\(
 FOUND=\"\"
-while [ ! -z \"$TEST\" ] && [ -z \"$FOUND\" ]; do
+while
     if [ -d \"$TEST\" ]; then
         for NAME in \"$@\"; do
-            if [ -e \"$TEST/$NAME\" ]; then
+    	if [ -e \"$TEST/$NAME\" ]; then
                 %k \"$TEST/$NAME\"
                 FOUND=1
-            fi
+    	fi
         done
     fi
-    if [ -z \"$FOUND\" ]; then
-        if [ \"$TEST\" = \"/\" ]; then
-            TEST=\"\"
-        else
-            TEST=\"${TEST%%/*}\"
-            if [ -z \"$TEST\" ]; then
-                TEST=\"/\"
-            fi
-        fi
-    fi
-done
+    [ -z \"$FOUND\" ] && [ \"$TEST\" != \"/\" ]
+do TEST=$(dirname \"$TEST\"); done
 echo \\)
 "
   "Script to find several dominating files on a remote host.
